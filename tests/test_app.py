@@ -3,4 +3,4 @@ def test_home_page():
     client = app.test_client()
     response = client.get('/')
     assert response.status_code == 200
-    assert b"Welcome to DevOps Demo" in response.data
+    assert b"Welcome to Server Time Demo App" in response.data
