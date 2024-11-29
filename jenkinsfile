@@ -1,0 +1,64 @@
+pipeline  {
+    agent any
+    
+    environment{
+        DOCKER_IMAGE = "flask_server_time"
+        DOCKER_TAG = "V${BUILD_NUMBER}"
+        DOCKER_PATH = '/usr/local/bin/docker'
+       
+       
+        
+    }
+    
+    stages {
+        stage('Checkout repo') {
+            steps {
+                 // Using declarative scmGit checkout
+                checkout scmGit(
+                    branches: [[name: '*/main']], 
+                    extensions: [[$class: 'CleanBeforeCheckout']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/hilary1309/server-time-jenkins-CI-CD'
+                        // If private repo, add:
+                        // credentialsId: 'your-jenkins-credential-id'
+                    ]]
+                )
+            }
+        }
+    
+    stage('Setup Python') {
+            steps {
+                sh 'python3 -m pip install --user pip'
+                sh 'python3 -m pip install --user -r requirements.txt'
+               
+            }
+        }
+        
+    stage('Run Test'){
+        steps{
+             sh 'python3 -m pytest tests/'
+        }
+    }
+    
+    stage("Build Docker Image") {
+        steps{
+            script{
+                
+                sh "${DOCKER_PATH} build --no-cache -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                sh "${DOCKER_PATH} tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+            }
+        }
+    }
+    
+    stage("Push to DockerHub") {
+        steps{
+            script{
+                sh "${DOCKER_PATH} stop ${DOCKER_IMAGE} || true"
+                sh "${DOCKER_PATH} rm ${DOCKER_IMAGE} || true"
+                sh "${DOCKER_PATH} run -d --name ${DOCKER_IMAGE} -p 5000:5000 ${DOCKER_IMAGE}:${DOCKER_TAG}"
+            }
+        }
+    }
+}
+    
+}
